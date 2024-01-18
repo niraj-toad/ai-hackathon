@@ -1,0 +1,58 @@
+version: '3.7'
+services:
+    aihack-web:
+        container_name: sourcetoad_aihack_web
+        environment:
+            - VIRTUAL_HOST=aihack.docker
+        build:
+            context: ./docker/nginx
+            target: base
+        depends_on:
+            - aihack-code
+        volumes:
+            - type: bind
+              source: ./
+              target: /code
+              consistency: delegated
+            - type: bind
+              source: ./docker/nginx/config/local/vhost.conf
+              target: /etc/nginx/conf.d/vhost.conf
+        networks:
+            - st-internal
+    aihack-code:
+        container_name: sourcetoad_aihack_code
+        environment:
+            - SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
+            - XDEBUG_CONFIG=remote_host=host.docker.internal
+            - PHP_IDE_CONFIG=serverName=docker
+        build:
+            context: ./docker/code
+            target: local
+        volumes:
+            - type: bind
+              source: ./
+              target: /code
+            - type: bind
+              source: $HOME/.npmrc
+              target: /root/.npmrc
+        networks:
+            - st-internal
+        ports:
+            - '5161:5161'
+    aihack-db:
+        container_name: sourcetoad_aihack_db
+        build:
+            context: ./docker/postgres
+            target: base
+        ports:
+            - "7154:5432"
+        environment:
+            - POSTGRES_USER=postgres_user
+            - POSTGRES_PASSWORD=postgres_pass
+            - POSTGRES_DB=aihack
+        networks:
+            - st-internal
+networks:
+    st-internal:
+        name: st-internal
+        external: true
